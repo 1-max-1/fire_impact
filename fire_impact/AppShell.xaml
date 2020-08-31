@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Shell xmlns="http://xamarin.com/schemas/2014/forms" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" xmlns:views="clr-namespace:fire_impact" x:Class="fire_impact.AppShell">
+    <Shell.FlyoutHeaderTemplate>
+        <DataTemplate>
+            <Grid BackgroundColor="Black" HeightRequest="200">
+                <Image Aspect="AspectFill" Source="fire_background.jpg" Opacity="0.6" />
+                <Label Text="Navigation" TextColor="White" FontAttributes="Bold" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+            </Grid>
+        </DataTemplate>
+    </Shell.FlyoutHeaderTemplate>
+
+    <FlyoutItem Title="Connected devices">
+        <Tab>
+            <ShellContent>
+                <views:ConnectedDevices />
+            </ShellContent>
+        </Tab>
+    </FlyoutItem>
+    
+    <FlyoutItem Title="Sensor data">
+        <Tab>
+            <ShellContent>
+                <views:SensorData />
+            </ShellContent>
+        </Tab>
+    </FlyoutItem>
+
+    <FlyoutItem Title="THE BUTTON" x:Name="theButton">
+        <Tab>
+            <ShellContent>
+                <views:ButtonPage />
+            </ShellContent>
+        </Tab>
+    </FlyoutItem>
+</Shell>
