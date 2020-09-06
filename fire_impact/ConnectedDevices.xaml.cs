@@ -112,6 +112,25 @@ namespace fire_impact
                 }
             }
 
+            // A substring of np means that the arduino still needs our Wi-Fi password
+            if(Encoding.ASCII.GetString(response.Buffer).EndsWith("np")) {
+                statusLabel.Text = "Enter your WiFi network name and password:";
+
+                Entry nameEntry = new Entry() {
+                    Placeholder = "Name",
+                    ClearButtonVisibility = ClearButtonVisibility.WhileEditing
+                };
+                Entry passwordEntry = new Entry() {
+                    Placeholder = "Password",
+                    IsPassword = true,
+                    ClearButtonVisibility = ClearButtonVisibility.WhileEditing
+                };
+
+                Button goButton = new Button() {
+                    Text = "Go"
+                };
+            }
+
             // Otherwise, we have received the data. Notify the app.
             statusLabel.Text = $"Connected to the arduino";
 
@@ -127,8 +146,7 @@ namespace fire_impact
             goto top_of_function;
         }
 
-        private void TCPLoop(string hostName)
-        {
+        private void TCPLoop(string hostName) {
             TcpClient TCPClient = null;
             // If this gets set to false, then we have lost the connection and we want to exit the tcp handler loop
             bool breakCheck = true;
@@ -161,8 +179,7 @@ namespace fire_impact
             timer.Start();
 
             // Loop forever. We can break out of it if we get an exception
-            while (breakCheck == true)
-            {
+            while (breakCheck == true) {
                 // If there is no data available to read from the arduino then we don't want to read it
                 if(networkStream.DataAvailable == false) continue;
 
@@ -243,7 +260,7 @@ namespace fire_impact
                     receiveResult = await listener.ReceiveAsync();
 
                     // We need to check that it was the arduino replying and not just some rando packet
-                    if (Encoding.ASCII.GetString(receiveResult.Buffer) == "I am an arduino")
+                    if (Encoding.ASCII.GetString(receiveResult.Buffer).StartsWith("iAmAnArduino"))
                     {
                         // If it was the arduino, then we can exit this while loop and return back to ScanForDevices()
                         timer.Stop();

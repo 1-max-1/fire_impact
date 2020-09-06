@@ -212,7 +212,7 @@ void broadcastListener() {
     // We now need to send a reply to the IP address and port that sent us the packet. We can begin the packet with this call
     udp.beginPacket(udp.remoteIP(), 1304);
     // The reply that we are sending
-    udp.print("I am an arduino");    
+    udp.print("iAmAnArduino");
     // endPacket sends the packet to the client
     udp.endPacket();
   }
