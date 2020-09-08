@@ -6,6 +6,7 @@ using System.ComponentModel;
 using Xamarin.Forms;
 using System.Threading.Tasks;
 using System.Timers;
+using Android.OS;
 
 namespace fire_impact
 {
@@ -20,6 +21,10 @@ namespace fire_impact
             Success,
             TimedOut
         }
+
+        private bool readyToSendPassword;
+        private string password;
+        private string name;
 
         public ConnectedDevices()
         {
@@ -112,6 +117,8 @@ namespace fire_impact
                 }
             }
 
+            bool needPassword = false;
+
             // A substring of np means that the arduino still needs our Wi-Fi password
             if(Encoding.ASCII.GetString(response.Buffer).EndsWith("np")) {
                 statusLabel.Text = "Enter your WiFi network name and password:";
@@ -129,15 +136,35 @@ namespace fire_impact
                 Button goButton = new Button() {
                     Text = "Go"
                 };
+
+                goButton.Clicked += delegate (object sender, EventArgs e) {
+                    // Validate input
+                    if (nameEntry.Text == "" || passwordEntry.Text == "") return;
+
+                    password = passwordEntry.Text;
+                    name = nameEntry.Text;
+
+                    nameEntry.IsEnabled = false;
+                    passwordEntry.IsEnabled = false;
+                    goButton.IsEnabled = false;
+
+                    readyToSendPassword = true;
+                };
+
+                stackLayout.Children.Add(nameEntry);
+                stackLayout.Children.Add(passwordEntry);
+                stackLayout.Children.Add(goButton);
+
+                needPassword = true;
             }
 
             // Otherwise, we have received the data. Notify the app.
-            statusLabel.Text = $"Connected to the arduino";
+            statusLabel.Text = "Connected to the arduino";
 
             // Start the tcp loop as a task. This will run it in the background withput interupting/blocking the main UI thread
             await Task.Run(() => {
                 // When the function exits it will be because of a connection failure.
-                TCPLoop(response.RemoteEndPoint.Address.ToString());
+                TCPLoop(response.RemoteEndPoint.Address.ToString(), needPassword);
                 // Give the arduino a bit of time to sort its problems out
                 Task.Delay(2000);
             });
@@ -146,7 +173,7 @@ namespace fire_impact
             goto top_of_function;
         }
 
-        private void TCPLoop(string hostName) {
+        private void TCPLoop(string hostName, bool needPassword) {
             TcpClient TCPClient = null;
             // If this gets set to false, then we have lost the connection and we want to exit the tcp handler loop
             bool breakCheck = true;
@@ -172,14 +199,28 @@ namespace fire_impact
             // Send the initial piece of data so the arduino can store this client
             networkStream.Write(Encoding.ASCII.GetBytes("init"), 0, 4);
 
-            // We are now connected, so the sensor data page should start displaying results
-            ((App)Application.Current).connected = true;
+            // If we don't need a password, then we are now connected, so the sensor data page should start displaying results
+            ((App)Application.Current).connected = !needPassword;
 
             // Start the timer
             timer.Start();
 
             // Loop forever. We can break out of it if we get an exception
             while (breakCheck == true) {
+                // This will be set to true if the user has pressed the go button to send the wifi information
+                if(readyToSendPassword == true) {
+                    byte[] nameBuffer = Encoding.ASCII.GetBytes(name);
+                    byte[] passwordBuffer = Encoding.ASCII.GetBytes(password);
+                    byte[] buffer = new byte[name.Length + password.Length + 1];
+
+                    Buffer.BlockCopy(nameBuffer, 0, buffer, 0, nameBuffer.Length);
+                    Buffer.BlockCopy(passwordBuffer, 0, buffer, nameBuffer.Length + 1, passwordBuffer.Length);
+                    // This is a separator
+                    buffer[nameBuffer.Length] = 1;
+
+                    networkStream.Write(buffer, 0, buffer.Length);
+                }
+
                 // If there is no data available to read from the arduino then we don't want to read it
                 if(networkStream.DataAvailable == false) continue;
 
