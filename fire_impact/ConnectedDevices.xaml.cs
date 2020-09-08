@@ -109,7 +109,7 @@ namespace fire_impact
                 // If we have pinged 3 times then we really can't find the arduino so we gotta stop
                 if (pingCount == 3)
                 {
-                    statusLabel.Text = "No devices found";
+                    statusLabel.Text = "No devices found. If the gas sensor's green light is on, then please connect to your 2.4GHz network and try again";
 
                     CreateRetryButton();
                     // We dont need to rescan so we can exit the function
@@ -120,8 +120,12 @@ namespace fire_impact
             bool needPassword = false;
 
             // A substring of np means that the arduino still needs our Wi-Fi password
-            if(Encoding.ASCII.GetString(response.Buffer).EndsWith("np")) {
+            string needPasswordSubstring = Encoding.ASCII.GetString(response.Buffer).Substring(13);
+            if (needPasswordSubstring.StartsWith("np")) {
+
                 statusLabel.Text = "Enter your WiFi network name and password:";
+                if (needPasswordSubstring.EndsWith("i"))
+                    statusLabel.Text += "(Previous password incorrect)";
 
                 Entry nameEntry = new Entry() {
                     Placeholder = "Name",
@@ -215,7 +219,7 @@ namespace fire_impact
 
                     Buffer.BlockCopy(nameBuffer, 0, buffer, 0, nameBuffer.Length);
                     Buffer.BlockCopy(passwordBuffer, 0, buffer, nameBuffer.Length + 1, passwordBuffer.Length);
-                    // This is a separator
+                    // This is a separator. Since a value of 1 doesn't have a corresponding printable ASCII value, I would never use 1 in text
                     buffer[nameBuffer.Length] = 1;
 
                     networkStream.Write(buffer, 0, buffer.Length);
@@ -225,24 +229,32 @@ namespace fire_impact
                 if(networkStream.DataAvailable == false) continue;
 
                 // Buffer to store the data
-                byte[] data = new byte[16];
+                byte[] inputBuffer = new byte[16];
 
                 // Read in the data
-                networkStream.Read(data, 0, data.Length);
+                networkStream.Read(inputBuffer, 0, inputBuffer.Length);
 
                 // We have received some data so we can restart the timer
                 timer.Stop();
                 timer.Start();
 
-                // Turn the data into a number that we can use
-                string[] sensorData = Encoding.ASCII.GetString(data).Split(',');
+                string text = Encoding.ASCII.GetString(inputBuffer);
 
-                for(byte i = 0; i < 2; i++)
-                {
-                    short sensorDataNum = short.Parse(sensorData[i]);
+                // If it starts with c, then the password was correct
+                if (text.StartsWith("c")) {
+                    statusLabel.Text = "The arduino is now connected to your WiFi network. Please connect your device to your WiFi network and restart this app";
+				}
+                // If it starts with d, then we are getting sent data from the sensors
+                else if(text.StartsWith("d")) {
+                    // Turn the data into a number that we can use
+                    string[] sensorData = text.Split(',');
 
-                    // Put the number in the main app's array so that the sensor data content-page can access it
-                    ((App)Application.Current).sensorData[i] = sensorDataNum;
+                    for (byte i = 0; i < 2; i++) {
+                        short sensorDataNum = short.Parse(sensorData[i]);
+
+                        // Put the number in the main app's array so that the sensor data content-page can access it
+                        ((App)Application.Current).sensorData[i] = sensorDataNum;
+                    }
                 }
             }
 
