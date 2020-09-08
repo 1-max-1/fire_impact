@@ -1,0 +1,13 @@
+{
+	"arduino.defaultBaudRate": 9600,
+    "arduino.openPDEFiletype": true,
+    "arduino.additionalUrls": "http://arduino.esp8266.com/stable/package_esp8266com_index.json, https://dl.espressif.com/dl/package_esp32_index.json",
+    "arduino.ignoreBoards": [
+        "Adafruit HUZZAH ESP8266"
+    ],
+    "C_Cpp.updateChannel": "Insiders",
+    "esp8266fs.preferencesPath": "C:\\Users\\Max\\AppData\\Local\\Arduino15",
+    "esp8266fs.esptool.executable": "C:\\Users\\Max\\AppData\\Local\\Arduino15\\packages\\sp32\\tools\\esptool_py\\2.6.1",
+    "esp8266fs.mkspiffs.executable": "C:\\Users\\Max\\AppData\\Local\\Arduino15\\packages\\esp32\\tools\\mkspiffs\\0.2.3",
+    "esp8266fs.logLevel": "debug"
+}
