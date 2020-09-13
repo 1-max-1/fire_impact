@@ -112,13 +112,15 @@ byte clientCount = 0;
 // This holds all of the clients that have connected to the tcp server. At the moment I'll keep it at a maximum of 5
 WiFiClient clients[5];
 
-//create udp instance
+// Create udp instance
 WiFiUDP udp;
 // Create tcp server instance
 WiFiServer TCPServer(1305);
 
 // We use this to determine if enough time has passed to update the sensor data
 unsigned long startMillis = 0;
+
+bool connectedToUserWifi = false;
 
 void setup(){
 		Serial.begin(9600);
@@ -139,9 +141,7 @@ void setup(){
 		Serial.print("IP address: ");
 		Serial.println(WiFi.localIP());
 		
-		//This initializes udp
 		udp.begin(WiFi.localIP(), 1304);
-
 		// Start the socket server for when we want to send data to clients
 		TCPServer.begin();
 }
@@ -166,7 +166,27 @@ void loop() {
 		}
 		// Otherwise the app will be sending us a password for the wifi
 		else {
-			// Do stuff
+			unsigned char nameBuffer[256];
+			unsigned char passwordBuffer[256];
+			incomingClient.readBytesUntil(1, nameBuffer, 256);
+			incomingClient.readBytes(passwordBuffer, 256);
+
+			Serial.println("Name buffer: " + String((char*)nameBuffer));
+			Serial.println("Password buffer: " + String((char*)passwordBuffer));
+
+			// Try and connect to the wifi
+			WiFi.disconnect();
+			WiFi.begin((char*)nameBuffer, (char*)passwordBuffer);
+
+			// Wait for connection
+			while (WiFi.status() != WL_CONNECTED) {
+				delay(250);
+				Serial.print(".");
+				
+				//TODO
+				// Need to check for incorrect wifi password
+			}
+			connectedToUserWifi = true;
 		}
 	}
 
@@ -181,11 +201,13 @@ void loop() {
 				continue;
 			}
 
-			// Read sensors
-			int value1 = analogRead(36);
-			int value2 = analogRead(39);
-			// Send the data to the app
-			clients[i].print(String(value1) + "," + String(value2));
+			// Read sensors. We only need to do this if we are actually connected to the user's wifi
+			if(connectedToUserWifi) {
+				int value1 = analogRead(36);
+				int value2 = analogRead(39);
+				// Send the data to the app
+				clients[i].print(String(value1) + "," + String(value2));
+			}
 		}
 
 		startMillis = millis();
@@ -226,7 +248,7 @@ void broadcastListener() {
 		// We now need to send a reply to the IP address and port that sent us the packet. We can begin the packet with this call
 		udp.beginPacket(udp.remoteIP(), 1304);
 		// The reply that we are sending
-		udp.print("iAmAnArduino");
+		udp.print(connectedToUserWifi ? "iAmAnArduino" : "iAmAnArduinonp");
 		// endPacket sends the packet to the client
 		udp.endPacket();
 	}
