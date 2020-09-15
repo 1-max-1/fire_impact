@@ -340,3 +340,4 @@ ASALocalRun/
 healthchecksdb
 
 AirQuality/.vscode/*
+/AirQuality/ArduinoBuildOutput

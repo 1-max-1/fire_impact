@@ -122,18 +122,18 @@ unsigned long startMillis = 0;
 
 bool connectedToUserWifi = false;
 
-void setup(){
+void setup() {
 		Serial.begin(9600);
 		
 		// Connect to the WiFi network
-		WiFi.begin("Hosking Family Wifi 2.4GHz", "resapujafe");
-		Serial.println("");
+		WiFi.softAP("FireImpact-WiFi", "xp59vg7p");
+		/*Serial.println("");
 
 		// Wait for connection
 		while (WiFi.status() != WL_CONNECTED) {
 			delay(250);
 			Serial.print(".");
-		}
+		}*/
 		
 		Serial.println("");
 		Serial.print("Connected to wifi");
