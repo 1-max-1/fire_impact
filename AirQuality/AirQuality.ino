@@ -237,10 +237,11 @@ void broadcastListener() {
 		char packetBuffer[255];
 
 		// read the packet into packetBufffer
-		int len = udp.read(packetBuffer, 16);
+		int len = udp.read(packetBuffer, 255);
 		
-		Serial.print("Received packet. Contents: ");
+		Serial.print("Received packet. Contentsss: ");
 		Serial.println(packetBuffer);
+		Serial.println("BOI");
 
 		// We don't want to reply to a random packet
 		if(strcmp(packetBuffer, "areYouTheArduino")) return;
@@ -248,6 +249,7 @@ void broadcastListener() {
 		// We now need to send a reply to the IP address and port that sent us the packet. We can begin the packet with this call
 		udp.beginPacket(udp.remoteIP(), 1304);
 		// The reply that we are sending
+		Serial.println("Sending " + String((connectedToUserWifi) ? "iAmAnArduino" : "iAmAnArduinonp"));
 		udp.print(connectedToUserWifi ? "iAmAnArduino" : "iAmAnArduinonp");
 		// endPacket sends the packet to the client
 		udp.endPacket();

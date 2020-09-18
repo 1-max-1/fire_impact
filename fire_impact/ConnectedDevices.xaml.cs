@@ -121,6 +121,7 @@ namespace fire_impact
 
             // A substring of np means that the arduino still needs our Wi-Fi password
             string needPasswordSubstring = Encoding.ASCII.GetString(response.Buffer).Substring(13);
+            Console.WriteLine(needPasswordSubstring);
             if (needPasswordSubstring.StartsWith("np")) {
 
                 statusLabel.Text = "Enter your WiFi network name and password:";
@@ -205,6 +206,7 @@ namespace fire_impact
 
             // If we don't need a password, then we are now connected, so the sensor data page should start displaying results
             ((App)Application.Current).connected = !needPassword;
+            Console.WriteLine("Connected to the arduino wifiserver");
 
             // Start the timer
             timer.Start();
@@ -213,6 +215,8 @@ namespace fire_impact
             while (breakCheck == true) {
                 // This will be set to true if the user has pressed the go button to send the wifi information
                 if(readyToSendPassword == true) {
+                    readyToSendPassword = false;
+
                     byte[] nameBuffer = Encoding.ASCII.GetBytes(name);
                     byte[] passwordBuffer = Encoding.ASCII.GetBytes(password);
                     byte[] buffer = new byte[name.Length + password.Length + 1];
@@ -311,6 +315,8 @@ namespace fire_impact
                     // Start the timer
                     timer.Start();
                     receiveResult = await listener.ReceiveAsync();
+
+                    Console.WriteLine(Encoding.ASCII.GetString(receiveResult.Buffer));
 
                     // We need to check that it was the arduino replying and not just some rando packet
                     if (Encoding.ASCII.GetString(receiveResult.Buffer).StartsWith("iAmAnArduino"))
