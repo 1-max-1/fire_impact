@@ -120,7 +120,7 @@ namespace fire_impact
             bool needPassword = false;
 
             // A substring of np means that the arduino still needs our Wi-Fi password
-            string needPasswordSubstring = Encoding.ASCII.GetString(response.Buffer).Substring(13);
+            string needPasswordSubstring = Encoding.ASCII.GetString(response.Buffer).Substring(12);
             Console.WriteLine(needPasswordSubstring);
             if (needPasswordSubstring.StartsWith("np")) {
 
@@ -173,12 +173,14 @@ namespace fire_impact
                 // Give the arduino a bit of time to sort its problems out
                 Task.Delay(2000);
             });
+            Console.WriteLine("Down here");
 
             // We want the function to rescan for any arduinos
             goto top_of_function;
         }
 
         private void TCPLoop(string hostName, bool needPassword) {
+            Console.WriteLine("Started TCP loop");
             TcpClient TCPClient = null;
             // If this gets set to false, then we have lost the connection and we want to exit the tcp handler loop
             bool breakCheck = true;
@@ -192,8 +194,10 @@ namespace fire_impact
             // If the elapsed event is fired, we want to close the listener because we haven't got a response
             timer.Elapsed += delegate (object sender, ElapsedEventArgs e)
             {
-                // If this method has been triggered, then we have lost connection with the arduino. We need to exit the loop and return out of the function
-                breakCheck = false;
+                // If this method has been triggered, then we have lost connection with the arduino. We need to exit the loop and return out of the function.
+                // HOWEVER, the arduino wont be sending us stuff if we are not fully connected/haven't given our wifi password yet
+                if(!needPassword)
+                    breakCheck = false;
             };
 
             // Create the tcp client
@@ -226,7 +230,9 @@ namespace fire_impact
                     // This is a separator. Since a value of 1 doesn't have a corresponding printable ASCII value, I would never use 1 in text
                     buffer[nameBuffer.Length] = 1;
 
-                    networkStream.Write(buffer, 0, buffer.Length);
+                    //networkStream.Write(buffer, 0, buffer.Length);
+                    networkStream.Write(Encoding.ASCII.GetBytes("init"), 0, 4);
+                    Console.WriteLine("Wrote the password " + Encoding.ASCII.GetString(buffer));
                 }
 
                 // If there is no data available to read from the arduino then we don't want to read it
@@ -262,6 +268,8 @@ namespace fire_impact
                 }
             }
 
+            Console.WriteLine("Broke out of tcp loop while loop");
+
             // We aren't connected anymore, let the sensor data screen know
             ((App)Application.Current).connected = false;
 
@@ -276,6 +284,8 @@ namespace fire_impact
         /// </summary>
         private async Task<(BroadcastResult, UdpReceiveResult)> Broadcast(Socket socket)
         {
+            Console.WriteLine("Broadcast function called");
+
             // Parse out the address from 255.255.255.255 - this address will make the socket send to everyone
             IPAddress broadcastIP = IPAddress.Parse("255.255.255.255");
 

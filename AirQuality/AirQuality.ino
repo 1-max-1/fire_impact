@@ -155,42 +155,22 @@ void loop() {
 			if(clients[i] == incomingClient) {
 				clientAlreadyConnected = true;
 				break;
-			}
+			} 
 		}
 		
 		// Store the client if we dont have them already
 		if(!clientAlreadyConnected) {
+			// Clear the input buffer from the client so its not data wating to be read
+			uint8_t unusedBuffer[4];
+			incomingClient.readBytes(unusedBuffer, 4);
 			clients[clientCount] = incomingClient;
+
 			Serial.println("Client connected. Client number: " + String(clientCount));
 			clientCount++;
 		}
-		// Otherwise the app will be sending us a password for the wifi
-		else {
-			unsigned char nameBuffer[256];
-			unsigned char passwordBuffer[256];
-			incomingClient.readBytesUntil(1, nameBuffer, 256);
-			incomingClient.readBytes(passwordBuffer, 256);
-
-			Serial.println("Name buffer: " + String((char*)nameBuffer));
-			Serial.println("Password buffer: " + String((char*)passwordBuffer));
-
-			// Try and connect to the wifi
-			WiFi.disconnect();
-			WiFi.begin((char*)nameBuffer, (char*)passwordBuffer);
-
-			// Wait for connection
-			while (WiFi.status() != WL_CONNECTED) {
-				delay(250);
-				Serial.print(".");
-				
-				//TODO
-				// Need to check for incorrect wifi password
-			}
-			connectedToUserWifi = true;
-		}
 	}
 
-	// If a second has passed then we need to update the sensor data
+	// If a second has passed then we need to run updates for the tcp server
 	if(millis() - startMillis >= 1000) {
 		for(byte i = 0; i < clientCount; i++) {
 			// If they aren't connected anymore then we can remove them and move on to the next client
@@ -198,7 +178,35 @@ void loop() {
 				Serial.println("Client " + String(i) + " disconnected");
 				clients[i].stop();
 				removeClient(i);
+				Serial.println("Client count: " + clientCount);
 				continue;
+			}
+
+			// If the client is sendig us data then it will be the name ssid and password for their wifi network
+			if(clients[i].available() > 0) {
+				Serial.println("Received WiFi details");
+
+				unsigned char nameBuffer[256];
+				unsigned char passwordBuffer[256];
+				incomingClient.readBytesUntil(1, nameBuffer, 256);
+				incomingClient.readBytes(passwordBuffer, 256);
+
+				Serial.println("Name buffer: " + String((char*)nameBuffer));
+				Serial.println("Password buffer: " + String((char*)passwordBuffer));
+
+				// Try and connect to the wifi
+				WiFi.disconnect();
+				WiFi.begin((char*)nameBuffer, (char*)passwordBuffer);
+
+				// Wait for connection
+				while (WiFi.status() != WL_CONNECTED) {
+					delay(250);
+					Serial.print(".");
+					
+					//TODO
+					// Need to check for incorrect wifi password
+				}
+				connectedToUserWifi = true;
 			}
 
 			// Read sensors. We only need to do this if we are actually connected to the user's wifi
@@ -213,7 +221,7 @@ void loop() {
 		startMillis = millis();
 	}
 
-	// We can still listen for broadcasts and respond to them
+	// We still want to listen for discovery broadcasts and respond to them
 	broadcastListener();
 }
 
