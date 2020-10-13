@@ -114,42 +114,31 @@ WiFiClient clients[5];
 
 // Create udp instance
 WiFiUDP udp;
-// Create tcp server instance
-WiFiServer TCPServer(1305);
+// Create tcp server instance. We only want a maximum of 5 clients
+WiFiServer TCPServer(1305, 5);
 
 // We use this to determine if enough time has passed to update the sensor data
 unsigned long startMillis = 0;
 
 bool connectedToUserWifi = false;
+bool incorrectWifiPassword = false;
 
 void setup() {
-		Serial.begin(9600);
-		
-		// Connect to the WiFi network
-		WiFi.softAP("FireImpact-WiFi", "xp59vg7p");
-		/*Serial.println("");
+	Serial.begin(9600);
+	
+	// Setup an access point. This will be connected to by users, who will in turn give us their wifi password
+	WiFi.softAP("FireImpact-WiFi", "xp59vg7p");
 
-		// Wait for connection
-		while (WiFi.status() != WL_CONNECTED) {
-			delay(250);
-			Serial.print(".");
-		}*/
-		
-		Serial.println("");
-		Serial.print("Connected to wifi");
-		//Serial.println(ssid);
-		Serial.print("IP address: ");
-		Serial.println(WiFi.localIP());
-		
-		udp.begin(WiFi.localIP(), 1304);
-		// Start the socket server for when we want to send data to clients
-		TCPServer.begin();
+	Serial.println("\nWifi access point setup");
+	Serial.println(WiFi.localIP());
+
+	createServers();
 }
 
 void loop() {
 	WiFiClient incomingClient = TCPServer.available();
-	// If we have an incoming client and they're sending us data, its the app on the users phone. We only want a maximum of 5 clients
-	if(incomingClient && clientCount < 5) {
+	// If we have an incoming client and they're sending us data, its the app on the users phone.
+	if(incomingClient) {
 		bool clientAlreadyConnected = false;
 		for(uint8_t i = 0; i < clientCount; i++) {
 			if(clients[i] == incomingClient) {
@@ -185,7 +174,9 @@ void loop() {
 			// If the client is sendig us data then it will be the name ssid and password for their wifi network
 			if(clients[i].available() > 0) {
 				Serial.println("Received WiFi details");
+				incorrectWifiPassword = false;
 
+				// Read in password and name
 				unsigned char nameBuffer[256];
 				unsigned char passwordBuffer[256];
 				incomingClient.readBytesUntil(1, nameBuffer, 256);
@@ -194,18 +185,28 @@ void loop() {
 				Serial.println("Name buffer: " + String((char*)nameBuffer));
 				Serial.println("Password buffer: " + String((char*)passwordBuffer));
 
-				// Try and connect to the wifi
-				WiFi.disconnect();
+				// We want to try and connect to the wifi now, so we shut down stuff and disconnect clients
+				WiFi.softAPdisconnect(true);
+				clientCount = 0;
 				WiFi.begin((char*)nameBuffer, (char*)passwordBuffer);
 
-				// Wait for connection
+				// Wait for connection.
 				while (WiFi.status() != WL_CONNECTED) {
 					delay(250);
-					Serial.print(".");
-					
-					//TODO
-					// Need to check for incorrect wifi password
+
+					//TODO: Probably need to check for incorrect wifi password (for polish), but maybe not actually. Cant be bothered.
+					if(WiFi.status() == WL_CONNECT_FAILED) {
+						incorrectWifiPassword = true;
+						Serial.println("Connect failed");
+
+						// When the connection fails, we restart the servers and the wifi network
+						WiFi.softAP("FireImpact-WiFi", "xp59vg7p");
+						createServers();
+						break;
+					}
 				}
+
+				createServers();
 				connectedToUserWifi = true;
 			}
 
@@ -257,9 +258,18 @@ void broadcastListener() {
 		// We now need to send a reply to the IP address and port that sent us the packet. We can begin the packet with this call
 		udp.beginPacket(udp.remoteIP(), 1304);
 		// The reply that we are sending
-		Serial.println("Sending " + String((connectedToUserWifi) ? "iAmAnArduino" : "iAmAnArduinonp"));
-		udp.print(connectedToUserWifi ? "iAmAnArduino" : "iAmAnArduinonp");
+		String reply = connectedToUserWifi ? "iAmAnArduino" : "iAmAnArduinonp";
+		if(incorrectWifiPassword) reply += "i";
+		Serial.println("Sending " + reply);
+		udp.print(reply.c_str());
 		// endPacket sends the packet to the client
 		udp.endPacket();
 	}
+}
+
+// This will create the UDP listener to listen for broadcasts, and a TCP socket to listen for passwords and send data
+void createServers() {
+	udp.begin(WiFi.localIP(), 1304);
+	// Start the socket server for when we want to send data to clients
+	TCPServer.begin();
 }
