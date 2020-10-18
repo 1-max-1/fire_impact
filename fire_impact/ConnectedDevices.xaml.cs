@@ -26,6 +26,11 @@ namespace fire_impact
         private string password;
         private string name;
 
+        // These hold the controls used to enter the password
+        private Entry nameEntry;
+        private Entry passwordEntry;
+        private Button goButton;
+
         public ConnectedDevices()
         {
             // Start the page
@@ -122,11 +127,11 @@ namespace fire_impact
             // A substring of np means that the arduino still needs our Wi-Fi password
             string needPasswordSubstring = Encoding.ASCII.GetString(response.Buffer).Substring(12);
             Console.WriteLine(needPasswordSubstring);
-            if (needPasswordSubstring.StartsWith("np")) {
+            if (Encoding.ASCII.GetString(response.Buffer).EndsWith("np")) {
 
-                statusLabel.Text = "Enter your WiFi network name and password:";
+                /*statusLabel.Text = "Enter your WiFi network name and password:";
                 if (needPasswordSubstring.EndsWith("i"))
-                    statusLabel.Text += "(Previous password incorrect)";
+                    statusLabel.Text += "(Previous password incorrect)";*/
 
                 Entry nameEntry = new Entry() {
                     Placeholder = "Name",
@@ -188,7 +193,7 @@ namespace fire_impact
             // Create a timer. This runs an event after 5000ms have passed. If we haven't received something from the arduino in that time, something has gone wrong.
             Timer timer = new Timer(5000)
             {
-                // We dont want it to start right now: bcwbkc
+                // We dont want it to start right now (bcwbkc)
                 Enabled = false
             };
             // If the elapsed event is fired, we want to close the listener because we haven't got a response
@@ -230,8 +235,8 @@ namespace fire_impact
                     // This is a separator. Since a value of 1 doesn't have a corresponding printable ASCII value, I would never use 1 in text
                     buffer[nameBuffer.Length] = 1;
 
-                    //networkStream.Write(buffer, 0, buffer.Length);
-                    networkStream.Write(Encoding.ASCII.GetBytes("init"), 0, 4);
+                    networkStream.Write(buffer, 0, buffer.Length);
+                    //networkStream.Write(Encoding.ASCII.GetBytes("init"), 0, 4);
                     Console.WriteLine("Wrote the password " + Encoding.ASCII.GetString(buffer));
                 }
 
@@ -253,7 +258,17 @@ namespace fire_impact
                 // If it starts with c, then the password was correct
                 if (text.StartsWith("c")) {
                     statusLabel.Text = "The arduino is now connected to your WiFi network. Please connect your device to your WiFi network and restart this app";
+                    breakCheck = false;
 				}
+                // i means incorrect password
+                else if(text.StartsWith("i"))
+				{
+                    statusLabel.Text = "INCORRECTO PASSWORDO";
+
+                    nameEntry.IsEnabled = true;
+                    passwordEntry.IsEnabled = true;
+                    goButton.IsEnabled = true;
+                }
                 // If it starts with d, then we are getting sent data from the sensors
                 else if(text.StartsWith("d")) {
                     // Turn the data into a number that we can use

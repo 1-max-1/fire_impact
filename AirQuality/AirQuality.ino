@@ -124,9 +124,10 @@ bool connectedToUserWifi = false;
 bool incorrectWifiPassword = false;
 
 void setup() {
-	Serial.begin(9600);
+	Serial.begin(115200);
 	
 	// Setup an access point. This will be connected to by users, who will in turn give us their wifi password
+	WiFi.mode(WIFI_AP_STA);
 	WiFi.softAP("FireImpact-WiFi", "xp59vg7p");
 
 	Serial.println("\nWifi access point setup");
@@ -179,33 +180,37 @@ void loop() {
 				// Read in password and name
 				unsigned char nameBuffer[256];
 				unsigned char passwordBuffer[256];
-				incomingClient.readBytesUntil(1, nameBuffer, 256);
-				incomingClient.readBytes(passwordBuffer, 256);
+				clients[i].readBytesUntil(1, nameBuffer, 256);
+				clients[i].readBytes(passwordBuffer, 256);
 
 				Serial.println("Name buffer: " + String((char*)nameBuffer));
 				Serial.println("Password buffer: " + String((char*)passwordBuffer));
 
-				// We want to try and connect to the wifi now, so we shut down stuff and disconnect clients
-				WiFi.softAPdisconnect(true);
-				clientCount = 0;
+				// We want to try and connect to the wifi now
+				WiFi.mode(WIFI_AP);
 				WiFi.begin((char*)nameBuffer, (char*)passwordBuffer);
 
 				// Wait for connection.
 				while (WiFi.status() != WL_CONNECTED) {
+					Serial.println((int)WiFi.status());
 					delay(250);
+					//yield();
 
 					//TODO: Probably need to check for incorrect wifi password (for polish), but maybe not actually. Cant be bothered.
 					if(WiFi.status() == WL_CONNECT_FAILED) {
 						incorrectWifiPassword = true;
 						Serial.println("Connect failed");
 
-						// When the connection fails, we restart the servers and the wifi network
-						WiFi.softAP("FireImpact-WiFi", "xp59vg7p");
-						createServers();
+						// When the connection fails, we notify the app
+						clients[i].write("i");
 						break;
 					}
 				}
 
+				Serial.println("correcto password");
+				clients[i].write("c");
+				WiFi.softAPdisconnect(true);
+				clientCount = 0;
 				createServers();
 				connectedToUserWifi = true;
 			}
@@ -259,7 +264,6 @@ void broadcastListener() {
 		udp.beginPacket(udp.remoteIP(), 1304);
 		// The reply that we are sending
 		String reply = connectedToUserWifi ? "iAmAnArduino" : "iAmAnArduinonp";
-		if(incorrectWifiPassword) reply += "i";
 		Serial.println("Sending " + reply);
 		udp.print(reply.c_str());
 		// endPacket sends the packet to the client
