@@ -124,10 +124,10 @@ bool connectedToUserWifi = false;
 bool incorrectWifiPassword = false;
 
 void setup() {
-	Serial.begin(115200);
+	Serial.begin(9600);
 	
 	// Setup an access point. This will be connected to by users, who will in turn give us their wifi password
-	WiFi.mode(WIFI_AP_STA);
+	//WiFi.mode(WIFI_AP_STA);
 	WiFi.softAP("FireImpact-WiFi", "xp59vg7p");
 
 	Serial.println("\nWifi access point setup");
@@ -168,42 +168,90 @@ void loop() {
 				Serial.println("Client " + String(i) + " disconnected");
 				clients[i].stop();
 				removeClient(i);
-				Serial.println("Client count: " + clientCount);
+				Serial.println("Client count: " + String(clientCount));
 				continue;
 			}
 
+			int availableBytes = clients[i].available();
+
 			// If the client is sendig us data then it will be the name ssid and password for their wifi network
-			if(clients[i].available() > 0) {
-				Serial.println("Received WiFi details");
+			if(availableBytes > 0) {
+				Serial.print("Received WiFi details.\nAvailable bytes: ");
+				Serial.println(availableBytes);
 				incorrectWifiPassword = false;
 
 				// Read in password and name
-				unsigned char nameBuffer[256];
-				unsigned char passwordBuffer[256];
-				clients[i].readBytesUntil(1, nameBuffer, 256);
-				clients[i].readBytes(passwordBuffer, 256);
+				/*unsigned char nameBuffer[255];
+				unsigned char passwordBuffer[255];
+				clients[i].readBytesUntil(1, nameBuffer, 255);
+				clients[i].readBytesUntil(1, passwordBuffer, 255);
 
-				Serial.println("Name buffer: " + String((char*)nameBuffer));
-				Serial.println("Password buffer: " + String((char*)passwordBuffer));
+				Serial.print("Password buffer: ");
+				Serial.println((char*)passwordBuffer);
+				Serial.print("Name buffer: ");
+				Serial.println((char*)nameBuffer);
+
+				for(int qwerty = 0; i < 256; i++) {
+					Serial.println((int)nameBuffer[i]);
+					Serial.println((int)passwordBuffer[i]);
+					Serial.println("\n");
+				}*/
+
+				/*unsigned char* buffer = new unsigned char[availableBytes];
+				clients[i].readBytes(buffer, availableBytes);
+				
+				char* nameBuffer;
+				char* passwordBuffer;
+				nameBuffer = strtok((char*)buffer, (char*)1);
+				passwordBuffer = strtok(NULL, (char*)1);
+
+				Serial.print("password buffer: ");
+				Serial.println((char*)passwordBuffer);
+				Serial.print("Name buffer: ");
+				Serial.println((char*)nameBuffer);*/
+
+				uint8_t nameBufLength = clients[i].read();
+				uint8_t passwordBufLength = availableBytes - nameBufLength - 3;
+
+				Serial.print("Name buffer length: ");
+				Serial.println(nameBufLength);
+				Serial.print("Password buffer length: ");
+				Serial.println(passwordBufLength);
+
+				char* nameBuffer = new char[nameBufLength];
+				char* passwordBuffer = new char[passwordBufLength];
+				Serial.println(clients[i].readBytesUntil(1, nameBuffer, nameBufLength));
+				clients[i].read();
+				Serial.println(clients[i].readBytesUntil(1, passwordBuffer, passwordBufLength));
+				clients[i].read();
+
+				Serial.print("Password buffer: ");
+				Serial.println(passwordBuffer);
+				Serial.print("Name buffer: ");
+				Serial.println(nameBuffer);
 
 				// We want to try and connect to the wifi now
-				WiFi.mode(WIFI_AP);
-				WiFi.begin((char*)nameBuffer, (char*)passwordBuffer);
+				//WiFi.mode(WIFI_AP);
+				WiFi.begin(nameBuffer, passwordBuffer);
+				//Serial.println((int)WiFi.waitForConnectResult());
+
+				delete[] nameBuffer;
+				delete[] passwordBuffer;
 
 				// Wait for connection.
 				while (WiFi.status() != WL_CONNECTED) {
-					Serial.println((int)WiFi.status());
+					//Serial.println((int)WiFi.status());
 					delay(250);
 					//yield();
 
 					//TODO: Probably need to check for incorrect wifi password (for polish), but maybe not actually. Cant be bothered.
-					if(WiFi.status() == WL_CONNECT_FAILED) {
+					if(WiFi.status() == WL_CONNECT_FAILED || WiFi.status() == WL_NO_SSID_AVAIL) {
 						incorrectWifiPassword = true;
 						Serial.println("Connect failed");
 
 						// When the connection fails, we notify the app
 						clients[i].write("i");
-						break;
+						return;
 					}
 				}
 
@@ -277,3 +325,7 @@ void createServers() {
 	// Start the socket server for when we want to send data to clients
 	TCPServer.begin();
 }
+
+/*int findSeparator(unsigned char* buffer, char* nameBuffer, ) {
+
+}*/

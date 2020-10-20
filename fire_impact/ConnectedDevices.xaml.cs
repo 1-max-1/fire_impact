@@ -226,22 +226,37 @@ namespace fire_impact
                 if(readyToSendPassword == true) {
                     readyToSendPassword = false;
 
-                    byte[] nameBuffer = Encoding.ASCII.GetBytes(name);
-                    byte[] passwordBuffer = Encoding.ASCII.GetBytes(password);
-                    byte[] buffer = new byte[name.Length + password.Length + 1];
+                    int nameSize = name.Length;
+                    int passwordSize = password.Length;
 
-                    Buffer.BlockCopy(nameBuffer, 0, buffer, 0, nameBuffer.Length);
-                    Buffer.BlockCopy(passwordBuffer, 0, buffer, nameBuffer.Length + 1, passwordBuffer.Length);
-                    // This is a separator. Since a value of 1 doesn't have a corresponding printable ASCII value, I would never use 1 in text
-                    buffer[nameBuffer.Length] = 1;
+                    //Need to add a 0 onto the end
+                    byte[] nameBuffer = new byte[nameSize + 1];
+                    nameBuffer = Encoding.ASCII.GetBytes(name);
+                    nameBuffer[nameSize] = 0;
+
+                    // Need to add a 0 onto the end for a terminating character in the arduino string
+                    byte[] passwordBuffer = new byte[passwordSize + 1];
+                    passwordBuffer = Encoding.ASCII.GetBytes(password);
+                    passwordBuffer[passwordSize] = 0;
+
+                    byte[] buffer = new byte[name.Length + password.Length + 3];
+
+                    Buffer.BlockCopy(nameBuffer, 0, buffer, 1, nameBuffer.Length);
+                    Buffer.BlockCopy(passwordBuffer, 0, buffer, nameBuffer.Length + 2, passwordBuffer.Length);
+                    // These is a separator. Since a value of 1 doesn't have a corresponding printable ASCII value, I would never use 1 in text
+                    buffer[nameBuffer.Length + 1] = 1;
+                    buffer[buffer.Length - 1] = 1;
+                    // Holds the length of the nameBuffer
+                    buffer[0] = (byte)nameBuffer.Length;
 
                     networkStream.Write(buffer, 0, buffer.Length);
-                    //networkStream.Write(Encoding.ASCII.GetBytes("init"), 0, 4);
                     Console.WriteLine("Wrote the password " + Encoding.ASCII.GetString(buffer));
                 }
 
                 // If there is no data available to read from the arduino then we don't want to read it
                 if(networkStream.DataAvailable == false) continue;
+
+                Console.WriteLine("Data available");
 
                 // Buffer to store the data
                 byte[] inputBuffer = new byte[16];
@@ -263,11 +278,12 @@ namespace fire_impact
                 // i means incorrect password
                 else if(text.StartsWith("i"))
 				{
-                    statusLabel.Text = "INCORRECTO PASSWORDO";
+                    Console.WriteLine("Incorrect passsssssssssss");
+                    //statusLabel.Text = "INCORRECTO PASSWORDO";
 
-                    nameEntry.IsEnabled = true;
+                    /*nameEntry.IsEnabled = true;
                     passwordEntry.IsEnabled = true;
-                    goButton.IsEnabled = true;
+                    goButton.IsEnabled = true;*/
                 }
                 // If it starts with d, then we are getting sent data from the sensors
                 else if(text.StartsWith("d")) {
