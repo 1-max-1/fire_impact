@@ -10,7 +10,10 @@
         <StackLayout x:Name="stackLayout">
             <Label x:Name="statusLabel" Text="Searching for devices..." HorizontalOptions="Center" VerticalOptions="CenterAndExpand" TextColor="Green" FontSize="Medium" VerticalTextAlignment="Center" HorizontalTextAlignment="Center"/>
             <Label x:Name="pingCountLabel" HorizontalOptions="Center" VerticalOptions="CenterAndExpand" FontSize="Body" TextColor="CornflowerBlue"/>
-        </StackLayout>
+			<Entry x:Name="nameEntry" Placeholder="Network name" ClearButtonVisibility="WhileEditing" IsVisible="False"/>
+			<Entry x:Name="passwordEntry" Placeholder="WiFi password" ClearButtonVisibility="WhileEditing" IsPassword="True" IsVisible="False"/>
+			<Button x:Name="goButton" Text="Go" IsVisible="False" Clicked="goButton_Clicked"/>
+		</StackLayout>
     </ContentPage.Content>
     
 </ContentPage>

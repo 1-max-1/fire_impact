@@ -26,11 +26,6 @@ namespace fire_impact
         private string password;
         private string name;
 
-        // These hold the controls used to enter the password
-        private Entry nameEntry;
-        private Entry passwordEntry;
-        private Button goButton;
-
         public ConnectedDevices()
         {
             // Start the page
@@ -123,48 +118,10 @@ namespace fire_impact
             }
 
             bool needPassword = false;
-
-            // A substring of np means that the arduino still needs our Wi-Fi password
-            string needPasswordSubstring = Encoding.ASCII.GetString(response.Buffer).Substring(12);
-            Console.WriteLine(needPasswordSubstring);
             if (Encoding.ASCII.GetString(response.Buffer).EndsWith("np")) {
-
-                /*statusLabel.Text = "Enter your WiFi network name and password:";
-                if (needPasswordSubstring.EndsWith("i"))
-                    statusLabel.Text += "(Previous password incorrect)";*/
-
-                Entry nameEntry = new Entry() {
-                    Placeholder = "Name",
-                    ClearButtonVisibility = ClearButtonVisibility.WhileEditing
-                };
-                Entry passwordEntry = new Entry() {
-                    Placeholder = "Password",
-                    IsPassword = true,
-                    ClearButtonVisibility = ClearButtonVisibility.WhileEditing
-                };
-
-                Button goButton = new Button() {
-                    Text = "Go"
-                };
-
-                goButton.Clicked += delegate (object sender, EventArgs e) {
-                    // Validate input
-                    if (nameEntry.Text == "" || passwordEntry.Text == "") return;
-
-                    password = passwordEntry.Text;
-                    name = nameEntry.Text;
-
-                    nameEntry.IsEnabled = false;
-                    passwordEntry.IsEnabled = false;
-                    goButton.IsEnabled = false;
-
-                    readyToSendPassword = true;
-                };
-
-                stackLayout.Children.Add(nameEntry);
-                stackLayout.Children.Add(passwordEntry);
-                stackLayout.Children.Add(goButton);
-
+                nameEntry.IsVisible = true;
+                passwordEntry.IsVisible = true;
+                goButton.IsVisible = true;
                 needPassword = true;
             }
 
@@ -229,28 +186,25 @@ namespace fire_impact
                     int nameSize = name.Length;
                     int passwordSize = password.Length;
 
-                    //Need to add a 0 onto the end
+                    // Need to add a 0 onto the end. This is for the benefit of the arduino, which uses c-style strings which require a null terminator
                     byte[] nameBuffer = new byte[nameSize + 1];
-                    nameBuffer = Encoding.ASCII.GetBytes(name);
+                    Buffer.BlockCopy(Encoding.ASCII.GetBytes(name), 0, nameBuffer, 0, nameSize);
                     nameBuffer[nameSize] = 0;
 
                     // Need to add a 0 onto the end for a terminating character in the arduino string
                     byte[] passwordBuffer = new byte[passwordSize + 1];
-                    passwordBuffer = Encoding.ASCII.GetBytes(password);
+                    Buffer.BlockCopy(Encoding.ASCII.GetBytes(password), 0, passwordBuffer, 0, passwordSize);
                     passwordBuffer[passwordSize] = 0;
 
-                    byte[] buffer = new byte[name.Length + password.Length + 3];
+                    byte[] buffer = new byte[nameBuffer.Length + passwordBuffer.Length + 1];
 
                     Buffer.BlockCopy(nameBuffer, 0, buffer, 1, nameBuffer.Length);
-                    Buffer.BlockCopy(passwordBuffer, 0, buffer, nameBuffer.Length + 2, passwordBuffer.Length);
-                    // These is a separator. Since a value of 1 doesn't have a corresponding printable ASCII value, I would never use 1 in text
-                    buffer[nameBuffer.Length + 1] = 1;
-                    buffer[buffer.Length - 1] = 1;
+                    Buffer.BlockCopy(passwordBuffer, 0, buffer, nameBuffer.Length + 1, passwordBuffer.Length);
                     // Holds the length of the nameBuffer
                     buffer[0] = (byte)nameBuffer.Length;
 
                     networkStream.Write(buffer, 0, buffer.Length);
-                    Console.WriteLine("Wrote the password " + Encoding.ASCII.GetString(buffer));
+                    Console.WriteLine("Wrote the password " + Encoding.ASCII.GetString(buffer) + ". Buffer size is " + buffer.Length + " btyes.");
                 }
 
                 // If there is no data available to read from the arduino then we don't want to read it
@@ -272,27 +226,30 @@ namespace fire_impact
 
                 // If it starts with c, then the password was correct
                 if (text.StartsWith("c")) {
-                    statusLabel.Text = "The arduino is now connected to your WiFi network. Please connect your device to your WiFi network and restart this app";
+                    Device.BeginInvokeOnMainThread(() => {
+                        statusLabel.Text = "The gas sensor is now connected to your WiFi network. Please connect your device to your home/regular WiFi network. You may need to press the Retry button below.";
+                    });
                     breakCheck = false;
 				}
                 // i means incorrect password
                 else if(text.StartsWith("i"))
 				{
-                    Console.WriteLine("Incorrect passsssssssssss");
-                    //statusLabel.Text = "INCORRECTO PASSWORDO";
+                    // Need to do these weird thingies because we cant access controls from a non-UI thread
+                    Device.BeginInvokeOnMainThread(() => {
+                        statusLabel.Text = "INCORRECTO PASSWORDO";
 
-                    /*nameEntry.IsEnabled = true;
-                    passwordEntry.IsEnabled = true;
-                    goButton.IsEnabled = true;*/
+                        nameEntry.IsEnabled = true;
+                        passwordEntry.IsEnabled = true;
+                        goButton.IsEnabled = true;
+                    });
                 }
                 // If it starts with d, then we are getting sent data from the sensors
                 else if(text.StartsWith("d")) {
                     // Turn the data into a number that we can use
                     string[] sensorData = text.Split(',');
 
-                    for (byte i = 0; i < 2; i++) {
+                    for (byte i = 1; i < 3; i++) {
                         short sensorDataNum = short.Parse(sensorData[i]);
-
                         // Put the number in the main app's array so that the sensor data content-page can access it
                         ((App)Application.Current).sensorData[i] = sensorDataNum;
                     }
@@ -323,7 +280,12 @@ namespace fire_impact
             try
             {
                 // Send the encoded string on port 1304 with the broadcast IP
-                socket.SendTo(Encoding.ASCII.GetBytes("areYouTheArduino"), new IPEndPoint(broadcastIP, 1304));
+
+                byte[] sendString = new byte[17];
+                Buffer.BlockCopy(Encoding.ASCII.GetBytes("areYouTheArduino"), 0, sendString, 0, 16);
+                // Arduino needs a null terminator
+                sendString[16] = 0;
+                socket.SendTo(sendString, new IPEndPoint(broadcastIP, 1304));
             }
             // If the user isn't connected to the network then SendTo throws an error
             catch(SocketException)
@@ -381,6 +343,22 @@ namespace fire_impact
 
             // If we did get a response, then we can pass it back
             return (BroadcastResult.Success, receiveResult);
+        }
+
+        // When the user presses the button to send the wifi name and password to the arduino
+        private void goButton_Clicked(object sender, EventArgs e)
+        {
+            // Validate input
+            if (nameEntry.Text == "" || passwordEntry.Text == "") return;
+
+            password = passwordEntry.Text;
+            name = nameEntry.Text;
+
+            nameEntry.IsEnabled = false;
+            passwordEntry.IsEnabled = false;
+            goButton.IsEnabled = false;
+
+            readyToSendPassword = true;
         }
     }
 }
