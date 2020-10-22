@@ -158,7 +158,7 @@ namespace fire_impact
             {
                 // If this method has been triggered, then we have lost connection with the arduino. We need to exit the loop and return out of the function.
                 // HOWEVER, the arduino wont be sending us stuff if we are not fully connected/haven't given our wifi password yet
-                if(!needPassword)
+                if(((App)Application.Current).connected)
                     breakCheck = false;
             };
 
@@ -226,14 +226,22 @@ namespace fire_impact
 
                 // If it starts with c, then the password was correct
                 if (text.StartsWith("c")) {
+                    Console.WriteLine("Correct password");
+                    ((App)Application.Current).connected = true;
+
+                    nameEntry.IsVisible = false;
+                    passwordEntry.IsVisible = false;
+                    goButton.IsVisible = false;
+
                     Device.BeginInvokeOnMainThread(() => {
-                        statusLabel.Text = "The gas sensor is now connected to your WiFi network. Please connect your device to your home/regular WiFi network. You may need to press the Retry button below.";
+                        statusLabel.Text = "The gas sensor is now connected to your WiFi network. You can now connect your device to your home/regular WiFi network to receive sensor data./* You may need to press the Retry button below.*/";
                     });
-                    breakCheck = false;
+                    //breakCheck = false;
 				}
                 // i means incorrect password
                 else if(text.StartsWith("i"))
 				{
+                    Console.WriteLine("Incorrect password");
                     // Need to do these weird thingies because we cant access controls from a non-UI thread
                     Device.BeginInvokeOnMainThread(() => {
                         statusLabel.Text = "INCORRECTO PASSWORDO";
@@ -245,13 +253,16 @@ namespace fire_impact
                 }
                 // If it starts with d, then we are getting sent data from the sensors
                 else if(text.StartsWith("d")) {
+                    Console.WriteLine("Received sensor data");
                     // Turn the data into a number that we can use
                     string[] sensorData = text.Split(',');
 
                     for (byte i = 1; i < 3; i++) {
                         short sensorDataNum = short.Parse(sensorData[i]);
                         // Put the number in the main app's array so that the sensor data content-page can access it
-                        ((App)Application.Current).sensorData[i] = sensorDataNum;
+                        Console.WriteLine("here1");
+                        ((App)Application.Current).sensorData[i - 1] = sensorDataNum;
+                        Console.WriteLine("here2");
                     }
                 }
             }

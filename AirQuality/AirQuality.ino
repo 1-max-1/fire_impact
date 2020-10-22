@@ -131,13 +131,17 @@ void setup() {
 	Serial.println("\nWifi access point setup");
 	Serial.println(WiFi.localIP());
 
-	createServers();
+	// Allows devices to find us
+	udp.begin(WiFi.localIP(), 1304);
+	// Start the socket server for when we want to send data to clients
+	TCPServer.begin();
 }
 
 void loop() {
 	WiFiClient incomingClient = TCPServer.available();
 	// If we have an incoming client and they're sending us data, its the app on the users phone.
 	if(incomingClient) {
+		// Incoming client will be true if an old client is sending data, so technically they are not new and we don't want to store them
 		bool clientAlreadyConnected = false;
 		for(uint8_t i = 0; i < clientCount; i++) {
 			if(clients[i] == incomingClient) {
@@ -148,7 +152,7 @@ void loop() {
 		
 		// Store the client if we dont have them already
 		if(!clientAlreadyConnected) {
-			// Clear the input buffer from the client so its not data wating to be read
+			// Clear the input buffer ("init") from the client so its not data wating to be read
 			uint8_t unusedBuffer[4];
 			incomingClient.readBytes(unusedBuffer, 4);
 			clients[clientCount] = incomingClient;
@@ -173,63 +177,15 @@ void loop() {
 			int availableBytes = clients[i].available();
 
 			// If the client is sendig us data then it will be the name ssid and password for their wifi network
-			if(availableBytes > 0) {
+			if(availableBytes > 0 && connectedToUserWifi == false) {
 				Serial.print("Received WiFi details.\nAvailable bytes: ");
 				Serial.println(availableBytes);
 
 				// Read in password and name
-				/*unsigned char nameBuffer[255];
-				unsigned char passwordBuffer[255];
-				clients[i].readBytesUntil(1, nameBuffer, 255);
-				clients[i].readBytesUntil(1, passwordBuffer, 255);
-
-				Serial.print("Password buffer: ");
-				Serial.println((char*)passwordBuffer);
-				Serial.print("Name buffer: ");
-				Serial.println((char*)nameBuffer);
-
-				for(int qwerty = 0; i < 256; i++) {
-					Serial.println((int)nameBuffer[i]);
-					Serial.println((int)passwordBuffer[i]);
-					Serial.println("\n");
-				}*/
-
-				/*unsigned char* buffer = new unsigned char[availableBytes];
-				clients[i].readBytes(buffer, availableBytes);
-				
-				char* nameBuffer;
-				char* passwordBuffer;
-				nameBuffer = strtok((char*)buffer, (char*)1);
-				passwordBuffer = strtok(NULL, (char*)1);
-
-				Serial.print("password buffer: ");
-				Serial.println((char*)passwordBuffer);
-				Serial.print("Name buffer: ");
-				Serial.println((char*)nameBuffer);*/
-
-				/*uint8_t nameBufLength = clients[i].read();
-				uint8_t passwordBufLength = availableBytes - nameBufLength - 3;
-
-				Serial.print("Name buffer length: ");
-				Serial.println(nameBufLength);
-				Serial.print("Password buffer length: ");
-				Serial.println(passwordBufLength);
-
-				char* nameBuffer = new char[nameBufLength];
-				char* passwordBuffer = new char[passwordBufLength];
-				Serial.println(clients[i].readBytesUntil(1, nameBuffer, nameBufLength));
-				clients[i].read();
-				Serial.println(clients[i].readBytesUntil(1, passwordBuffer, passwordBufLength));
-				clients[i].read();
-
-				Serial.print("Password buffer: ");
-				Serial.println(passwordBuffer);
-				Serial.print("Name buffer: ");
-				Serial.println(nameBuffer);*/
-
                 char* buffer = new char[availableBytes];
                 clients[i].readBytes(buffer, availableBytes);
 
+				// The first byte of the buffer will hold the length of the network name
                 int nameBufferSize = (int)buffer[0];
                 int passwordBufferSize = availableBytes - nameBufferSize - 1;
                 char* nameBuffer = new char[nameBufferSize];
@@ -240,24 +196,14 @@ void loop() {
 				Serial.print("Password buffer length: ");
 				Serial.println(passwordBufferSize);
 
+				// Split buffer into separate null terminated strings for wifi
                 memcpy(nameBuffer, &buffer[1], nameBufferSize);
                 memcpy(passwordBuffer, &buffer[1 + nameBufferSize], passwordBufferSize);
 
                 Serial.print("Name buffer: ");
 				Serial.println(nameBuffer);
-                /*for(int qwerty = 0; i < nameBufferSize; i++) {
-					Serial.print((int)nameBuffer[i]);
-                    Serial.print(",");
-				}
-                Serial.println("\n");*/
-
                 Serial.print("Password buffer: ");
 				Serial.println(passwordBuffer);
-                /*for(int qwerty = 0; i < passwordBufferSize; i++) {
-					Serial.print((int)passwordBuffer[i]);
-                    Serial.print(",");
-				}
-                Serial.println("\n");*/
 
 				// We want to try and connect to the wifi now
 				WiFi.begin(nameBuffer, passwordBuffer);
@@ -268,37 +214,38 @@ void loop() {
 				delete[] passwordBuffer;
 
 				// Wait for connection.
+				bool incorrectPassword = false;
 				while (WiFi.status() != WL_CONNECTED) {
 					delay(250);
 					yield();
 
-					//TODO: Probably need to check for incorrect wifi password (for polish), but maybe not actually. Cant be bothered.
 					if(WiFi.status() == WL_CONNECT_FAILED || WiFi.status() == WL_NO_SSID_AVAIL) {
 						Serial.println("Connect failed");
 
 						// When the connection fails, we notify the app
 						clients[i].print("i");
-						return;
+						incorrectPassword = true;
+						break;
 					}
 				}
+
+				// Dont want to do the below stuff if the password was actually wrong
+				if(incorrectPassword) continue;
 
 				Serial.println("correcto password and ssid");
 				clients[i].print("c");
                 Serial.println("Printed c to the client");
-				//WiFi.softAPdisconnect(true);
-				//clientCount = 0;
-				//createServers();
 				connectedToUserWifi = true;
                 return;
 			}
 
 			// Read sensors. We only need to do this if we are actually connected to the user's wifi
-			/*if(connectedToUserWifi) {
+			if(connectedToUserWifi) {
 				int value1 = analogRead(36);
 				int value2 = analogRead(39);
 				// Send the data to the app
 				clients[i].print("d," + String(value1) + "," + String(value2));
-			}*/
+			}
 		}
 
 		startMillis = millis();
@@ -306,6 +253,12 @@ void loop() {
 
 	// We still want to listen for discovery broadcasts and respond to them
 	broadcastListener();
+
+	// The access point is there so we can get network details. When we get the correct details, the esp32 will connect to the regular network. However, the acces point will still be
+	// kept open so that the client can be informed their details were correct. We cant close the AP straight away since that will stop the message. It doesn't do any harm to keep
+	// it open, we can just let it sit there and close it at a later date, if there are no clients connected to it anymore. Note that doing this wont close the TCP server (handily)
+	if(connectedToUserWifi && WiFi.softAPgetStationNum() < 1)
+		WiFi.softAPdisconnect(true);
 }
 
 // Small util function
@@ -346,11 +299,4 @@ void broadcastListener() {
 		// endPacket sends the packet to the client
 		udp.endPacket();
 	}
-}
-
-// This will create the UDP listener to listen for broadcasts, and a TCP socket to listen for passwords and send data
-void createServers() {
-	udp.begin(WiFi.localIP(), 1304);
-	// Start the socket server for when we want to send data to clients
-	TCPServer.begin();
 }
