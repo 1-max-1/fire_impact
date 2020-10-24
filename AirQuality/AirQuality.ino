@@ -106,6 +106,7 @@ void loop() {}*/
 
 #include <WiFi.h>
 #include <WiFiUdp.h>
+#include <SPIFFS.h>
 
 // The amount of clients that have connected
 byte clientCount = 0;
@@ -125,16 +126,45 @@ bool connectedToUserWifi = false;
 void setup() {
 	Serial.begin(9600);
 	
-	// Setup an access point. This will be connected to by users, who will in turn give us their wifi password
-	WiFi.softAP("FireImpact-WiFi", "xp59vg7p");
+	bool result = SPIFFS.begin();
+	if(!result) {
+		Serial.println("SPIFFS initializaion failed");
+		while(true);
+	}
 
-	Serial.println("\nWifi access point setup");
-	Serial.println(WiFi.localIP());
+	File file = SPIFFS.open("/networkDetails.txt");
+	if(!file || file.size() < 1) {
+		Serial.println("No previous data");
+		// Setup an access point. This will be connected to by users, who will in turn give us their wifi password
+		WiFi.softAP("FireImpact-WiFi", "xp59vg7p");
+	}
+	// If there is some stuff in the file, then we read the details out of the file
+	else {
+		String networkName = file.readStringUntil(',');
+		String networkPassword = file.readString();
+		file.close();
+		Serial.println("Name: " + networkName + "\nPassword: " + networkPassword);
+		WiFi.begin(networkName.c_str(), networkPassword.c_str());
+
+		// Wait for connection
+		while (WiFi.status() != WL_CONNECTED) {
+			delay(250);
+			yield();
+		}
+
+		connectedToUserWifi = true;
+	}
 
 	// Allows devices to find us
-	udp.begin(WiFi.localIP(), 1304);
+	result = udp.begin(WiFi.localIP(), 1304);
+	if(!result) {
+		Serial.println("UDP initializaion failed");
+		while(true);
+	}
+
 	// Start the socket server for when we want to send data to clients
 	TCPServer.begin();
+	Serial.println("Started");
 }
 
 void loop() {
@@ -182,44 +212,37 @@ void loop() {
 				Serial.println(availableBytes);
 
 				// Read in password and name
-                char* buffer = new char[availableBytes];
-                clients[i].readBytes(buffer, availableBytes);
+				char* buffer = new char[availableBytes];
+				clients[i].readBytes(buffer, availableBytes);
 
 				// The first byte of the buffer will hold the length of the network name
-                int nameBufferSize = (int)buffer[0];
-                int passwordBufferSize = availableBytes - nameBufferSize - 1;
-                char* nameBuffer = new char[nameBufferSize];
+				int nameBufferSize = (int)buffer[0];
+				int passwordBufferSize = availableBytes - nameBufferSize - 1;
+				char* nameBuffer = new char[nameBufferSize];
 				char* passwordBuffer = new char[passwordBufferSize];
 
-                Serial.print("Name buffer length: ");
-				Serial.println(nameBufferSize);
-				Serial.print("Password buffer length: ");
-				Serial.println(passwordBufferSize);
-
 				// Split buffer into separate null terminated strings for wifi
-                memcpy(nameBuffer, &buffer[1], nameBufferSize);
-                memcpy(passwordBuffer, &buffer[1 + nameBufferSize], passwordBufferSize);
+				memcpy(nameBuffer, &buffer[1], nameBufferSize);
+				memcpy(passwordBuffer, &buffer[1 + nameBufferSize], passwordBufferSize);
 
-                Serial.print("Name buffer: ");
+				Serial.print("Name buffer: ");
 				Serial.println(nameBuffer);
-                Serial.print("Password buffer: ");
+				Serial.print("Password buffer: ");
 				Serial.println(passwordBuffer);
 
-				// We want to try and connect to the wifi now
 				WiFi.begin(nameBuffer, passwordBuffer);
 
-                // Memory leaks are bad...
-                delete[] buffer;
-				delete[] nameBuffer;
-				delete[] passwordBuffer;
-
-				// Wait for connection.
 				bool incorrectPassword = false;
+				byte connectionAttemptLoops = 0;
+
+				// Wait for connection
 				while (WiFi.status() != WL_CONNECTED) {
+					Serial.println((int)WiFi.status());
 					delay(250);
+					connectionAttemptLoops++;
 					yield();
 
-					if(WiFi.status() == WL_CONNECT_FAILED || WiFi.status() == WL_NO_SSID_AVAIL) {
+					if(WiFi.status() == WL_CONNECT_FAILED || WiFi.status() == WL_NO_SSID_AVAIL || connectionAttemptLoops > 36) {
 						Serial.println("Connect failed");
 
 						// When the connection fails, we notify the app
@@ -230,13 +253,31 @@ void loop() {
 				}
 
 				// Dont want to do the below stuff if the password was actually wrong
-				if(incorrectPassword) continue;
+				if(incorrectPassword) {
+					// Memory leaks are bad...
+					delete[] buffer;
+					delete[] nameBuffer;
+					delete[] passwordBuffer;
+					continue;
+				}
 
-				Serial.println("correcto password and ssid");
+				// Store details for next time
+				File file = SPIFFS.open("/networkDetails.txt", "w");
+				file.write((unsigned char*)nameBuffer, nameBufferSize);
+				file.write((unsigned char*)",", 1);
+				file.write((unsigned char*)passwordBuffer, passwordBufferSize);
+				file.close();
+
+				// Memory leaks are bad...
+				delete[] buffer;
+				delete[] nameBuffer;
+				delete[] passwordBuffer;
+
+				Serial.println("correcto password and SSID");
 				clients[i].print("c");
-                Serial.println("Printed c to the client");
+				Serial.println("Printed c to the client");
 				connectedToUserWifi = true;
-                return;
+				return;
 			}
 
 			// Read sensors. We only need to do this if we are actually connected to the user's wifi

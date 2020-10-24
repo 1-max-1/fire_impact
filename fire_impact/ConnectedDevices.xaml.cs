@@ -229,14 +229,12 @@ namespace fire_impact
                     Console.WriteLine("Correct password");
                     ((App)Application.Current).connected = true;
 
-                    nameEntry.IsVisible = false;
-                    passwordEntry.IsVisible = false;
-                    goButton.IsVisible = false;
-
                     Device.BeginInvokeOnMainThread(() => {
+                        nameEntry.IsVisible = false;
+                        passwordEntry.IsVisible = false;
+                        goButton.IsVisible = false;
                         statusLabel.Text = "The gas sensor is now connected to your WiFi network. You can now connect your device to your home/regular WiFi network to receive sensor data./* You may need to press the Retry button below.*/";
                     });
-                    //breakCheck = false;
 				}
                 // i means incorrect password
                 else if(text.StartsWith("i"))
@@ -244,7 +242,7 @@ namespace fire_impact
                     Console.WriteLine("Incorrect password");
                     // Need to do these weird thingies because we cant access controls from a non-UI thread
                     Device.BeginInvokeOnMainThread(() => {
-                        statusLabel.Text = "INCORRECTO PASSWORDO";
+                        statusLabel.Text = "Failed to connect. Please make sure you have the correct network name and password.";
 
                         nameEntry.IsEnabled = true;
                         passwordEntry.IsEnabled = true;
@@ -361,6 +359,8 @@ namespace fire_impact
         {
             // Validate input
             if (nameEntry.Text == "" || passwordEntry.Text == "") return;
+
+            statusLabel.Text = "Trying to connect. Hang on...";
 
             password = passwordEntry.Text;
             name = nameEntry.Text;
