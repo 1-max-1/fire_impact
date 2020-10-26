@@ -1,112 +1,7 @@
-/*#include <WiFi.h>
-#include <HTTPClient.h>
-
-// howsmyssl.com root certificate authority
-const char* root_ca = \
-"-----BEGIN CERTIFICATE-----\n" \
-"MIIDSjCCAjKgAwIBAgIQRK+wgNajJ7qJMDmGLvhAazANBgkqhkiG9w0BAQUFADA/\n" \
-"MSQwIgYDVQQKExtEaWdpdGFsIFNpZ25hdHVyZSBUcnVzdCBDby4xFzAVBgNVBAMT\n" \
-"DkRTVCBSb290IENBIFgzMB4XDTAwMDkzMDIxMTIxOVoXDTIxMDkzMDE0MDExNVow\n" \
-"PzEkMCIGA1UEChMbRGlnaXRhbCBTaWduYXR1cmUgVHJ1c3QgQ28uMRcwFQYDVQQD\n" \
-"Ew5EU1QgUm9vdCBDQSBYMzCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEB\n" \
-"AN+v6ZdQCINXtMxiZfaQguzH0yxrMMpb7NnDfcdAwRgUi+DoM3ZJKuM/IUmTrE4O\n" \
-"rz5Iy2Xu/NMhD2XSKtkyj4zl93ewEnu1lcCJo6m67XMuegwGMoOifooUMM0RoOEq\n" \
-"OLl5CjH9UL2AZd+3UWODyOKIYepLYYHsUmu5ouJLGiifSKOeDNoJjj4XLh7dIN9b\n" \
-"xiqKqy69cK3FCxolkHRyxXtqqzTWMIn/5WgTe1QLyNau7Fqckh49ZLOMxt+/yUFw\n" \
-"7BZy1SbsOFU5Q9D8/RhcQPGX69Wam40dutolucbY38EVAjqr2m7xPi71XAicPNaD\n" \
-"aeQQmxkqtilX4+U9m5/wAl0CAwEAAaNCMEAwDwYDVR0TAQH/BAUwAwEB/zAOBgNV\n" \
-"HQ8BAf8EBAMCAQYwHQYDVR0OBBYEFMSnsaR7LHH62+FLkHX/xBVghYkQMA0GCSqG\n" \
-"SIb3DQEBBQUAA4IBAQCjGiybFwBcqR7uKGY3Or+Dxz9LwwmglSBd49lZRNI+DT69\n" \
-"ikugdB/OEIKcdBodfpga3csTS7MgROSR6cz8faXbauX+5v3gTt23ADq1cEmv8uXr\n" \
-"AvHRAosZy5Q6XkjEGB5YGV8eAlrwDPGxrancWYaLbumR9YbK+rlmM6pZW87ipxZz\n" \
-"R8srzJmwN0jP41ZL9c8PDHIyh8bwRLtTcm1D9SZImlJnt1ir/md2cXjbDaJWFBM5\n" \
-"JDGFoqgCWjBH4d1QB7wCCZAA62RjYJsWvIjJEubSfZGL+T0yjWW06XyxV3bqxbYo\n" \
-"Ob8VZRzI9neWagqNdwvYkQsEjgfbKbYK7p2CNTUQ\n" \
-"-----END CERTIFICATE-----\n";
-
-void setup() {
-	WiFi.disconnect();
-	WiFi.mode(WIFI_STA);
-	Serial.begin(9600);
-
-	function();
-}
-
-void function() {
-	Serial.println("Scanning for networks");
-	int16_t networks = WiFi.scanNetworks(false, true);
-	Serial.println("Scan complete\n\nNetworks within range:");
-
-	int viableNetworks[networks] = {};
-	int index = 0;
-	
-	for(int i = 0; i < networks; i++) {
-		if(WiFi.RSSI(i) >= -70) {
-			viableNetworks[index] = i;
-			index++;
-			Serial.println(String(i + 1) + ") " + WiFi.SSID(i) + ", " + (WiFi.encryptionType(i) == WIFI_AUTH_OPEN ? "Open" : "Secure"));
-		}
-	}
-
-	label1:
-	Serial.println("\nPlease type the corresponding number to choose the network:");
-	while(Serial.available() <= 0) {}
-	int choice = Serial.parseInt();
-
-	// parseInt returns 0 when it times out so thats ultra handy!!! It will be caught by this statement id the user enters a non int
-	if(choice < 1 or choice > index) {
-		Serial.println("\nThat wasn't a valid choice!");
-		goto label1;
-	}
-
-	// Get the number of the network from our choice.
-	choice = viableNetworks[choice - 1];
-
-	if(WiFi.encryptionType(choice) != WIFI_AUTH_OPEN) {
-		label2:
-		Serial.println("\nThis network requires a password. Please enter it now:");
-		while(Serial.available() <= 0) {}
-		String password = Serial.readString();
-
-		if(WiFi.begin(WiFi.SSID(choice).c_str(), password.c_str()) != WL_CONNECTED) {
-			Serial.print("\nSomething went wrong. You probably entered an incorrect password. Please try again.");
-			goto label2;
-		}
-	}
-	else {
-		label3:
-		if(WiFi.begin(WiFi.SSID(choice).c_str()) != WL_CONNECTED) {
-			Serial.println("\nSomething went wrong. Attempting to reconnect...");
-			goto label3;
-		}
-	}
-
-	Serial.println("\nSuccessfully connected to the network!\nSending request to howsmyssl.com\n");
-
-	HTTPClient http;
- 
-		http.begin("https://www.howsmyssl.com/a/check", root_ca); //Specify the URL and certificate
-		int httpCode = http.GET();
- 
-		if (httpCode > 0) { //Check for the returning code
-				String payload = http.getString();
-				Serial.println(httpCode);
-				Serial.println(payload);
-			}
- 
-		else {
-			Serial.println("Error on HTTP request");
-		}
- 
-		http.end(); //Free the resources
-}
-
-void loop() {}*/
-
-
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <SPIFFS.h>
+#include <Esp.h>
 
 // The amount of clients that have connected
 byte clientCount = 0;
@@ -120,11 +15,44 @@ WiFiServer TCPServer(1305, 5);
 
 // We use this to determine if enough time has passed to update the sensor data
 unsigned long startMillis = 0;
+// Tracks how long ago the reset button was pressed. Used for debouncing too
+unsigned long buttonPressTime = 0;
+int prevButtonState;
 
 bool connectedToUserWifi = false;
 
+struct pins {
+	static const int SETUP_IN_PROGRESS = 25;
+	static const int SETUP_SUCCESS = 26;
+	static const int NEED_WIFI_DETAILS = 27;
+	static const int CONNECTED = 14;
+	static const int RESET_BUTTON = 13;
+	static const int SENSOR_1 = 36;
+	static const int SENSOR_2 = 39;
+
+	static void clearLEDS() {
+		digitalWrite(SETUP_SUCCESS, LOW);
+		digitalWrite(SETUP_IN_PROGRESS, LOW);
+		digitalWrite(CONNECTED, LOW);
+		digitalWrite(NEED_WIFI_DETAILS, LOW);
+	}
+};
+
 void setup() {
 	Serial.begin(9600);
+
+	// Button and sensors
+	pinMode(pins::SENSOR_1, INPUT);
+	pinMode(pins::SENSOR_2, INPUT);
+	pinMode(pins::RESET_BUTTON, INPUT);
+	prevButtonState = digitalRead(pins::RESET_BUTTON);
+
+	// LED's
+	pinMode(pins::SETUP_SUCCESS, OUTPUT);
+	pinMode(pins::NEED_WIFI_DETAILS, OUTPUT);
+	pinMode(pins::CONNECTED, OUTPUT);
+	pinMode(pins::SETUP_IN_PROGRESS, OUTPUT);
+	digitalWrite(pins::SETUP_IN_PROGRESS, HIGH);
 	
 	bool result = SPIFFS.begin();
 	if(!result) {
@@ -133,10 +61,11 @@ void setup() {
 	}
 
 	File file = SPIFFS.open("/networkDetails.txt");
-	if(!file || file.size() < 1) {
+	if(!file || file.size() < 3) {
 		Serial.println("No previous data");
 		// Setup an access point. This will be connected to by users, who will in turn give us their wifi password
 		WiFi.softAP("FireImpact-WiFi", "xp59vg7p");
+		digitalWrite(pins::NEED_WIFI_DETAILS, HIGH);
 	}
 	// If there is some stuff in the file, then we read the details out of the file
 	else {
@@ -152,6 +81,7 @@ void setup() {
 			yield();
 		}
 
+		digitalWrite(pins::CONNECTED, HIGH);
 		connectedToUserWifi = true;
 	}
 
@@ -165,6 +95,9 @@ void setup() {
 	// Start the socket server for when we want to send data to clients
 	TCPServer.begin();
 	Serial.println("Started");
+
+	digitalWrite(pins::SETUP_IN_PROGRESS, LOW);
+	digitalWrite(pins::SETUP_SUCCESS, HIGH);
 }
 
 void loop() {
@@ -182,7 +115,7 @@ void loop() {
 		
 		// Store the client if we dont have them already
 		if(!clientAlreadyConnected) {
-			// Clear the input buffer ("init") from the client so its not data wating to be read
+			// Clear the input buffer ("init") from the client so it's not data wating to be read
 			uint8_t unusedBuffer[4];
 			incomingClient.readBytes(unusedBuffer, 4);
 			clients[clientCount] = incomingClient;
@@ -273,6 +206,9 @@ void loop() {
 				delete[] nameBuffer;
 				delete[] passwordBuffer;
 
+				digitalWrite(pins::NEED_WIFI_DETAILS, LOW);
+				digitalWrite(pins::CONNECTED, HIGH);
+
 				Serial.println("correcto password and SSID");
 				clients[i].print("c");
 				Serial.println("Printed c to the client");
@@ -300,6 +236,28 @@ void loop() {
 	// it open, we can just let it sit there and close it at a later date, if there are no clients connected to it anymore. Note that doing this wont close the TCP server (handily)
 	if(connectedToUserWifi && WiFi.softAPgetStationNum() < 1)
 		WiFi.softAPdisconnect(true);
+
+	int buttonState = digitalRead(pins::RESET_BUTTON);
+	// Captures first time button is pressed
+	if(buttonState == HIGH && prevButtonState == LOW && millis() - buttonPressTime > 100) {
+		Serial.println("Button pressed first time");
+		buttonPressTime = millis();
+	}
+	// Captures when button has been held down for more than 4 seconds
+	else if(buttonState == HIGH && prevButtonState == HIGH && millis() - buttonPressTime > 4000) {
+		Serial.println("resetting");
+
+		// Clear file
+		File file = SPIFFS.open("/networkDetails.txt", "w");
+		file.write(44);
+		file.close();
+
+		// Reboot
+		pins::clearLEDS();
+		ESP.restart();
+	}
+
+	prevButtonState = buttonState;
 }
 
 // Small util function
@@ -317,7 +275,6 @@ void broadcastListener() {
 	// if there's data available, read a packet
 	int packetSize = udp.parsePacket();
 	if (packetSize) {
-		
 		// Buffer to hold incoming packet
 		char packetBuffer[17];
 
