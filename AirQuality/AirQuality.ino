@@ -254,6 +254,7 @@ void loop() {
 
 		// Reboot
 		pins::clearLEDS();
+        // It says there is an error here ("identifier ESP is undefined") but its actually correct and vscode has a bug where it cant parse externs
 		ESP.restart();
 	}
 
